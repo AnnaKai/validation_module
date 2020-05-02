@@ -26,6 +26,8 @@ module Validation
     end
 
     def validate!
+      return true if self.class.validation_rules.nil?
+
       self.class.validation_rules.each do |rule|
         value = send(rule[:name])
         raise "#{rule[:name]} failed #{rule[:type]} validation" unless send "validate_#{rule[:type]}", value, rule[:args]

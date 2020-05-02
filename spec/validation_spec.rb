@@ -150,5 +150,15 @@ RSpec.describe Validation do
       subject.age = 20
       expect { subject.validate! }.not_to raise_error
     end
+
+    context 'no validation rules' do
+      class DefaultValidation
+        include Validation
+      end
+
+      it 'does not raise errors' do
+        expect(DefaultValidation.new.validate!).to be true
+      end
+    end
   end
 end
