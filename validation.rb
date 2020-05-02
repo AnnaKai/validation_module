@@ -1,4 +1,6 @@
 module Validation
+  class Error < StandardError; end
+
   def self.included(base)
     base.send :extend, ClassMethods
     base.send :include, InstanceMethods
@@ -10,19 +12,18 @@ module Validation
     def validate(name, options = {})
       @validation_rules ||= []
       options.each do |type, args|
-        @validation_rules << { name: name, type: type, args: args } if options[type]
+        if options[type]
+          @validation_rules << { name: name, type: type, args: args }
+        end
       end
     end
   end
 
   module InstanceMethods
     def valid?
-      return true if self.class.validation_rules.nil?
-
-      self.class.validation_rules.all? do |rule|
-        value = send(rule[:name])
-        send "validate_#{rule[:type]}", value, rule[:args]
-      end
+      validate!
+    rescue Error
+      false
     end
 
     def validate!
@@ -30,7 +31,10 @@ module Validation
 
       self.class.validation_rules.each do |rule|
         value = send(rule[:name])
-        raise "#{rule[:name]} failed #{rule[:type]} validation" unless send "validate_#{rule[:type]}", value, rule[:args]
+        message = "#{rule[:name]} failed #{rule[:type]} validation"
+        unless send "validate_#{rule[:type]}", value, rule[:args]
+          raise Validation::Error, message
+        end
       end
     end
 

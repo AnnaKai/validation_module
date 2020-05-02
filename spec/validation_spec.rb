@@ -28,7 +28,7 @@ RSpec.describe Validation do
 
         it 'returns true' do
           subject.last_name = 'Potter'
-          expect(subject.valid?).to be true
+          expect(subject).to be_valid
         end
       end
 
@@ -46,26 +46,47 @@ RSpec.describe Validation do
 
         it 'is invalid if a required value is nil' do
           subject.first_name = nil
-          expect(subject.valid?).to be false
+          expect(subject).not_to be_valid
         end
 
         it 'is invalid if a required value is empty string' do
           subject.first_name = ''
-          expect(subject.valid?).to be false
+          expect(subject).not_to be_valid
         end
 
         it 'is valid if a required value is present' do
           subject.first_name = 'Harry'
           subject.last_name = 'Potter'
 
-          expect(subject.valid?).to be true
+          expect(subject).to be_valid
         end
 
         it 'is invalid when value is not present' do
           subject.first_name = 'Harry'
           subject.last_name = ''
 
-          expect(subject.valid?).to be false
+          expect(subject).not_to be_valid
+        end
+      end
+
+      context 'complex validations' do
+        class MyString < String
+        end
+
+        class ComplexValidation < OpenStruct
+          include Validation
+
+          validate :first_name, presence: true, format: /\A\d*\z/, type: MyString
+        end
+
+        it 'is valid when all validations are true' do
+          expect(ComplexValidation.new(first_name: MyString.new('8'))).to be_valid
+        end
+
+        it 'is invalid when any validation fails' do
+          [MyString.new(''), MyString.new('A'), 'A'].each do |value|
+            expect(ComplexValidation.new(first_name: value)).not_to be_valid
+          end
         end
       end
     end
@@ -82,12 +103,12 @@ RSpec.describe Validation do
 
       it 'is valid when matches format' do
         subject.number = '555'
-        expect(subject.valid?).to be true
+        expect(subject).to be_valid
       end
 
       it 'is invalid when does not match format' do
         subject.number = 'aaa'
-        expect(subject.valid?).to be false
+        expect(subject).not_to be_valid
       end
     end
 
@@ -128,20 +149,20 @@ RSpec.describe Validation do
 
     it 'raises a presence error with a message if validation does not pass' do
       subject.first_name = nil
-      expect { subject.validate! }.to raise_error('first_name failed presence validation')
+      expect { subject.validate! }.to raise_error(Validation::Error, 'first_name failed presence validation')
     end
 
     it 'raises a format error with a message if validation does not pass' do
       subject.first_name = 'Harry'
       subject.number = 'string'
-      expect { subject.validate! }.to raise_error('number failed format validation')
+      expect { subject.validate! }.to raise_error(Validation::Error, 'number failed format validation')
     end
 
     it 'raises a type error with a message if validation does not pass' do
       subject.first_name = 'Harry'
       subject.number = '9'
       subject.age = 'string'
-      expect { subject.validate! }.to raise_error('age failed type validation')
+      expect { subject.validate! }.to raise_error(Validation::Error, 'age failed type validation')
     end
 
     it 'does not raise an error' do
